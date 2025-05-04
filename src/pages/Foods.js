@@ -78,6 +78,7 @@ const Foods = () => {
                 ),
         },
         { title: "Trạng thái", dataIndex: "status", key: "status" },
+        { title: "Số lượng", dataIndex: "quantity", key: "quantity", render: (quantity) => quantity ?? 0 },
     ];
 
     const fields = [
@@ -112,6 +113,15 @@ const Foods = () => {
             ],
             rules: [{ required: true, message: "Vui lòng chọn trạng thái!" }],
         },
+        {
+            name: "quantity",
+            label: "Số lượng",
+            type: "number",
+            rules: [
+                { required: true, message: "Vui lòng nhập số lượng!" },
+                { type: "number", min: 0, message: "Số lượng phải lớn hơn hoặc bằng 0!" },
+            ],
+        },
     ];
 
     const handleSubmit = async (values) => {
@@ -135,19 +145,20 @@ const Foods = () => {
                 }
                 await docRef.update({
                     ...values,
-                    updatedAt: new Date().toISOString(), // Track update time
+                    updatedAt: new Date().toISOString(),
                 });
                 message.success("Cập nhật món ăn thành công!");
             } else {
                 console.log("Adding new food record:", values);
                 await db.collection("foods").add({
                     ...values,
-                    createdAt: new Date().toISOString(), // Track creation time
+                    createdAt: new Date().toISOString(),
+                    quantity: values.quantity || 0, // Ensure quantity is initialized
                 });
                 message.success("Thêm món ăn thành công!");
             }
             setModalOpen(false);
-            setEditingRecord(null); // Clear editing state
+            setEditingRecord(null);
         } catch (error) {
             console.error("Lỗi khi lưu món ăn:", error);
             message.error("Không thể lưu món ăn: " + error.message);
@@ -179,7 +190,7 @@ const Foods = () => {
 
     const handleEdit = (record) => {
         console.log("Editing record:", record);
-        setEditingRecord({ ...record }); // Create a new object to avoid mutation
+        setEditingRecord({ ...record });
         setModalOpen(true);
     };
 
@@ -197,7 +208,7 @@ const Foods = () => {
             <Button
                 type="primary"
                 onClick={() => {
-                    setEditingRecord(null); // Ensure no editing record when adding new
+                    setEditingRecord(null);
                     setModalOpen(true);
                 }}
                 style={{ marginBottom: 16 }}
@@ -209,13 +220,13 @@ const Foods = () => {
                 columns={columns}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                rowKey="id" // Ensure unique key for each row
+                rowKey="id"
             />
             <CrudForm
                 open={modalOpen}
                 onCancel={handleCancel}
                 onSubmit={handleSubmit}
-                initialValues={editingRecord || {}} // Provide empty object if no editingRecord
+                initialValues={editingRecord || {}}
                 fields={fields}
             />
         </div>

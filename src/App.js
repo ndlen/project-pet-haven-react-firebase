@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
 import { Layout, Spin } from "antd";
 import { ThemeProvider } from "./context/ThemeContext";
 import Navbar from "./components/Navbar";
@@ -12,6 +12,9 @@ import CustomerApp from "./customer/CustomerApp";
 import { checkAdminAccess } from "./firebase/authUtils";
 import { auth } from "./firebase/firebaseConfig";
 import "./styles.css";
+import Schedule from "./pages/Schedule";
+import Employees from "./pages/Employees";
+import ErrorPage from "./Error";
 
 const { Content } = Layout;
 
@@ -19,19 +22,19 @@ const App = () => {
   const [isAdmin, setIsAdmin] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        // Người dùng đã đăng nhập, kiểm tra quyền admin
-        checkAdminAccess()
-          .then((result) => {
-            setIsAdmin(result);
-          })
-          .catch((error) => {
-            console.error("Lỗi kiểm tra quyền admin:", error);
-            setIsAdmin(false);
-          });
+        console.log("App.js - User authenticated:", user.email);
+        try {
+          const adminStatus = await checkAdminAccess();
+          console.log("App.js - Is user an admin?", adminStatus);
+          setIsAdmin(adminStatus);
+        } catch (error) {
+          console.error("Lỗi kiểm tra quyền admin:", error);
+          setIsAdmin(false);
+        }
       } else {
-        // Người dùng chưa đăng nhập hoặc vừa đăng xuất
+        console.log("App.js - No user authenticated.");
         setIsAdmin(false);
       }
     });
@@ -39,45 +42,61 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  if (isAdmin === null) return <Spin size="large" style={{ display: "block", margin: "50px auto" }} />;
+  if (isAdmin === null) {
+    return <Spin size="large" style={{ display: "block", margin: "50px auto" }} />;
+  }
+
+  console.log("App.js - Rendering with isAdmin:", isAdmin);
+
+  // Define routes using createBrowserRouter
+  const router = createBrowserRouter([
+    {
+      path: "/customer/*",
+      element: <CustomerApp />,
+    },
+    {
+      path: "/login",
+      element: isAdmin ? <Navigate to="/admin/appointments" /> : <Login setIsAdmin={setIsAdmin} />,
+    },
+    {
+      path: "/admin",
+      element: isAdmin ? (
+        <Layout>
+          <Navbar />
+          <Content style={{ padding: "80px 50px" }}>
+            <Outlet />
+          </Content>
+        </Layout>
+      ) : (
+        <Navigate to="/login" />
+      ),
+      errorElement: <ErrorPage />, // Handle errors for /admin and its children
+      children: [
+        { path: "", element: <Navigate to="appointments" /> }, // Redirect /admin to /admin/appointments
+        { path: "appointments", element: <Appointments /> },
+        { path: "foods", element: <Foods /> },
+        { path: "services", element: <Services /> },
+        { path: "users", element: <Users /> },
+        { path: "schedule", element: <Schedule /> },
+        { path: "employees", element: <Employees /> },
+        { path: "*", element: <ErrorPage /> }, // Catch unmatched admin routes
+      ],
+    },
+    {
+      path: "/",
+      element: <Navigate to="/customer" />, // Redirect root to /customer
+    },
+    {
+      path: "*",
+      element: <ErrorPage />, // Catch all other unmatched routes
+      errorElement: <ErrorPage />,
+    },
+  ]);
 
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
-          {/* Luồng khách hàng - không cần admin */}
-          <Route path="/customer/*" element={<CustomerApp />} />
-
-          {/* Luồng admin - cần xác minh admin */}
-          <Route
-            path="/login"
-            element={isAdmin ? <Navigate to="/appointments" /> : <Login setIsAdmin={setIsAdmin} />}
-          />
-          <Route
-            path="/*"
-            element={
-              isAdmin ? (
-                <Layout>
-                  <Navbar />
-                  <Content style={{ padding: "80px 50px" }}>
-                    <Routes>
-                      <Route path="/appointments" element={<Appointments />} />
-                      <Route path="/foods" element={<Foods />} />
-                      <Route path="/services" element={<Services />} />
-                      <Route path="/users" element={<Users />} />
-                      <Route path="*" element={<Navigate to="/appointments" />} />
-                    </Routes>
-                  </Content>
-                </Layout>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
-        </Routes>
-      </Router>
+      <RouterProvider router={router} />
     </ThemeProvider>
-
   );
 };
 

@@ -15,7 +15,7 @@ import haven from '../assets/images/haven.jpg';
 import sha256 from "js-sha256";
 const { Title, Paragraph } = Typography;
 
-// Trong CustomerApp.js
+// CustomerNavbar component (unchanged)
 const CustomerNavbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -123,7 +123,8 @@ const CustomerNavbar = () => {
         />
     );
 };
-// Home Page
+
+// CustomerHome component (unchanged)
 const CustomerHome = () => {
     const { theme } = useContext(ThemeContext);
     const [services, setServices] = useState([]);
@@ -131,7 +132,6 @@ const CustomerHome = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Load dịch vụ nổi bật
         NProgress.start();
         const unsubscribeServices = db.collection("services")
             .limit(4)
@@ -146,7 +146,6 @@ const CustomerHome = () => {
                 }
             );
 
-        // Load sản phẩm nổi bật
         const unsubscribeProducts = db.collection("foods")
             .where("status", "==", "Có sẵn")
             .limit(4)
@@ -172,7 +171,6 @@ const CustomerHome = () => {
     return (
         <div style={{ background: "var(--background-color)", minHeight: "100vh" }}>
             <div style={{ padding: "80px 50px" }}>
-                {/* Hero Section */}
                 <div style={{ display: "flex", alignItems: "center", background: "var(--modal-bg)", padding: "50px", borderRadius: "10px", marginBottom: "40px" }}>
                     <div style={{ flex: 1, color: "var(--text-color)" }}>
                         <Title level={1} style={{ color: "var(--text-color)" }}>
@@ -187,8 +185,6 @@ const CustomerHome = () => {
                     </div>
                     <Image src={background} width={400} style={{ borderRadius: "10px" }} />
                 </div>
-
-                {/* About Section */}
                 <div style={{ display: "flex", alignItems: "center", marginBottom: "40px" }}>
                     <div style={{ flex: 1, color: "var(--text-color)" }}>
                         <Title level={2} style={{ color: "var(--text-color)" }}>
@@ -203,8 +199,6 @@ const CustomerHome = () => {
                     </div>
                     <Image src={haven} width={400} style={{ borderRadius: "10px" }} />
                 </div>
-
-                {/* Services Section */}
                 <div style={{ marginBottom: "40px" }}>
                     <Title level={2} style={{ color: "var(--text-color)" }}>
                         Dịch vụ nổi bật 🏆
@@ -229,8 +223,6 @@ const CustomerHome = () => {
                         </div>
                     )}
                 </div>
-
-                {/* Products Section */}
                 <div style={{ marginBottom: "40px" }}>
                     <Title level={2} style={{ color: "var(--text-color)" }}>
                         Sản phẩm nổi bật 🛍️
@@ -261,8 +253,6 @@ const CustomerHome = () => {
                         </div>
                     )}
                 </div>
-
-                {/* Testimonials Section */}
                 <div style={{ marginBottom: "40px" }}>
                     <Title level={2} style={{ color: "var(--text-color)" }}>
                         Khách hàng nói gì về chúng tôi? 🐾
@@ -294,8 +284,6 @@ const CustomerHome = () => {
                         </Card>
                     </div>
                 </div>
-
-                {/* FAQ Section */}
                 <div style={{ marginBottom: "40px" }}>
                     <Title level={2} style={{ color: "var(--text-color)" }}>
                         Câu hỏi thường gặp ❓
@@ -327,8 +315,6 @@ const CustomerHome = () => {
                         </div>
                     </Card>
                 </div>
-
-                {/* CTA Section */}
                 <div style={{ background: "var(--modal-bg)", padding: "50px", textAlign: "center", borderRadius: "10px" }}>
                     <Title level={2} style={{ color: "var(--text-color)" }}>
                         Hãy chăm sóc thú cưng của bạn ngay hôm nay!
@@ -344,7 +330,8 @@ const CustomerHome = () => {
         </div>
     );
 };
-// Services Page
+
+// CustomerServices component (unchanged)
 const CustomerServices = () => {
     const { theme } = useContext(ThemeContext);
     const [services, setServices] = useState([]);
@@ -393,7 +380,7 @@ const CustomerServices = () => {
             picture: service.picture || "https://via.placeholder.com/200",
             quantity: 1,
             type: "service",
-            date: moment().format("YYYY-MM-DD"), // Định dạng YYYY-MM-DD thay vì ISO
+            date: moment().format("YYYY-MM-DD"),
             userId: user.uid,
             userFullname: userData.fullname,
             userPhone: userData.phone,
@@ -453,6 +440,8 @@ const CustomerServices = () => {
         </div>
     );
 };
+
+// CustomerFoods component (unchanged)
 const CustomerFoods = () => {
     const { theme } = useContext(ThemeContext);
     const [foods, setFoods] = useState([]);
@@ -470,7 +459,6 @@ const CustomerFoods = () => {
                         console.log(
                             "No documents found with status 'Có sẵn'. Checking all foods..."
                         );
-                        // Debug: Fetch all foods to inspect statuses
                         db.collection("foods")
                             .get()
                             .then((allSnapshot) => {
@@ -631,14 +619,21 @@ const CustomerFoods = () => {
         </div>
     );
 };
+
+// Updated CustomerCart component with detailed order logging
 const CustomerCart = () => {
     const { theme } = useContext(ThemeContext);
     const [cart, setCart] = useState([]);
+    const [paymentMethod, setPaymentMethod] = useState("COD");
+    const [qrCodeUrl, setQrCodeUrl] = useState(null);
+    const [bankInfo, setBankInfo] = useState(null);
+    const [orderId, setOrderId] = useState(null);
     const navigate = useNavigate();
 
+    // Load giỏ hàng từ localStorage
     const loadCart = () => {
         const cartData = JSON.parse(localStorage.getItem("cart")) || [];
-        const formattedCart = cartData.map(item => ({
+        const formattedCart = cartData.map((item) => ({
             ...item,
             date: item.date && moment(item.date, "YYYY-MM-DD", true).isValid() ? item.date : null,
         }));
@@ -649,40 +644,141 @@ const CustomerCart = () => {
         loadCart();
     }, []);
 
-    const updateQuantity = (index, quantity) => {
-        let updatedCart = [...cart];
-        quantity = Math.max(1, parseInt(quantity));
-        updatedCart[index].quantity = quantity;
-        localStorage.setItem("cart", JSON.stringify(updatedCart));
-        setCart(updatedCart);
+    // Tạo URL Quick Link VietQR
+    const generateVietQR = (orderId, total) => {
+        const bankId = "970422"; // VietinBank
+        const accountNo = "0905859265";
+        const template = "compact";
+        const accountNameRaw = "NGUYEN DUC LEN";
+        const accountName = encodeURIComponent(accountNameRaw);
+        const amount = Math.floor(parseInt(total, 10));
+        const descriptionRaw = `Thanh toan don hang ${orderId}`;
+        const description = encodeURIComponent(descriptionRaw).replace(/[^a-zA-Z0-9%]/g, "").slice(0, 50);
+
+        if (!bankId.match(/^\d+$/) || !accountNo.match(/^[a-zA-Z0-9]{1,19}$/)) {
+            message.error("Thông tin ngân hàng không hợp lệ!");
+            return null;
+        }
+        if (amount <= 0 || isNaN(amount)) {
+            message.error("Số tiền không hợp lệ!");
+            return null;
+        }
+        if (descriptionRaw.length > 50) {
+            message.error("Nội dung chuyển khoản quá dài (tối đa 50 ký tự)!");
+            return null;
+        }
+
+        const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${description}&accountName=${accountName}`;
+        console.log("URL VietQR được tạo:", qrUrl);
+        console.log("Thông tin VietQR:", { bankId, accountNo, template, amount, description: descriptionRaw, accountName: accountNameRaw });
+
+        return { qrUrl, bankInfo: { bankId, accountNo, accountName: accountNameRaw } };
     };
 
-    const updateDate = (index, date) => {
-        let updatedCart = [...cart];
-        updatedCart[index].date = date || null;
-        console.log(`Updated date for item ${index}:`, updatedCart[index].date);
-        localStorage.setItem("cart", JSON.stringify(updatedCart));
-        setCart(updatedCart);
+    // Hàm kiểm tra trạng thái thanh toán qua VietQR API
+    const checkPaymentStatus = async (orderId, total) => {
+        try {
+            const response = await fetch('http://localhost:3001/api/vietqr', {
+                method: "GET",
+                headers: {
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                },
+            });
+            if (!response.ok) {
+                console.error("Lỗi HTTP:", response.status);
+                return false;
+            }
+            const result = await response.json();
+            console.log("Dữ liệu từ VietQR API:", result);
+
+            if (result.error) {
+                console.error("API trả về lỗi:", result);
+                return false;
+            }
+
+            const transactions = result.data.filter(item => item["Mã GD"] !== "Mã GD");
+            console.log("Giao dịch:", transactions);
+
+            // Chuẩn hóa orderId thành chữ in hoa
+            const normalizedOrderId = orderId.toUpperCase();
+            const matchingTransaction = transactions.find((tx) => {
+                const description = tx["Mô tả"].toUpperCase();
+                const price = parseInt(tx["Giá trị"]);
+                const account = tx["Số tài khoản"];
+                console.log("So sánh giao dịch:", {
+                    description: description,
+                    orderId: normalizedOrderId,
+                    price: price,
+                    total: parseInt(total),
+                    account: account
+                });
+                return (
+                    description.includes(normalizedOrderId) &&
+                    price >= parseInt(total) &&
+                    account === "0905859265"
+                );
+            });
+
+            console.log("Kiểm tra khớp:", { orderId: normalizedOrderId, total, matchingTransaction });
+            return !!matchingTransaction;
+        } catch (error) {
+            console.error("Lỗi kiểm tra thanh toán:", error);
+            return false;
+        }
     };
 
-    const removeItem = (index) => {
-        let updatedCart = [...cart];
-        updatedCart.splice(index, 1);
-        localStorage.setItem("cart", JSON.stringify(updatedCart));
-        setCart(updatedCart);
+    // Hàm xử lý thanh toán thành công
+    const handleSuccessfulPayment = async (orderRef) => {
+        const userData = JSON.parse(localStorage.getItem("user"));
+        try {
+            await db.collection("orders").doc(orderRef.id).update({
+                status: "Đã thanh toán",
+                updatedAt: new Date().toISOString(),
+            });
+
+            const appointmentPromises = cart.map((item) => {
+                if (item.type === "service") {
+                    const appointment = {
+                        fullname: userData.fullname || "",
+                        phone: userData.phone || "",
+                        date: item.date,
+                        service: item.name || "Không có tên",
+                        status: "Chờ xác nhận",
+                        userId: auth.currentUser.uid,
+                    };
+                    return db.collection("appointments").add(appointment);
+                }
+                return Promise.resolve();
+            });
+
+            await Promise.all(appointmentPromises);
+            localStorage.removeItem("cart");
+            setCart([]);
+            setQrCodeUrl(null);
+            setBankInfo(null);
+            setOrderId(null);
+            message.success("Thanh toán thành công!");
+            navigate("/customer/history");
+        } catch (error) {
+            console.error("Lỗi xử lý thanh toán:", error);
+            message.error("Lỗi cập nhật đơn hàng!");
+        }
     };
 
+    // Hàm thanh toán với log chi tiết đơn hàng
     const checkout = async () => {
         const user = auth.currentUser;
         if (!user) {
-            message.error("Vui lòng đăng nhập để thanh toán!");
+            message.error("Vui lòng đăng nhập!");
             navigate("/customer/login");
             return;
         }
 
         const userData = JSON.parse(localStorage.getItem("user"));
         if (!userData) {
-            message.error("Vui lòng cập nhật thông tin cá nhân trước khi thanh toán!");
+            message.error("Vui lòng cập nhật thông tin cá nhân!");
             navigate("/customer/profile");
             return;
         }
@@ -694,24 +790,15 @@ const CustomerCart = () => {
 
         const hasMissingDate = cart.some((item) => item.type === "service" && !item.date);
         if (hasMissingDate) {
-            message.error("Vui lòng nhập ngày đến cho tất cả các dịch vụ trong giỏ hàng!");
+            message.error("Vui lòng nhập ngày cho dịch vụ!");
             return;
         }
 
         const hasInvalidDate = cart.some((item) => {
             if (item.type === "service") {
                 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-                if (!dateRegex.test(item.date)) {
-                    message.error(`Ngày đến của dịch vụ ${item.name} phải có định dạng YYYY-MM-DD (ví dụ: 2025-04-20)!`);
-                    return true;
-                }
-                const date = moment(item.date, "YYYY-MM-DD", true);
-                if (!date.isValid()) {
-                    message.error(`Ngày đến của dịch vụ ${item.name} không hợp lệ!`);
-                    return true;
-                }
-                if (date.isBefore(moment().startOf("day"))) {
-                    message.error(`Ngày đến của dịch vụ ${item.name} không được nhỏ hơn ngày hiện tại!`);
+                if (!dateRegex.test(item.date) || !moment(item.date, "YYYY-MM-DD", true).isValid() || moment(item.date).isBefore(moment().startOf("day"))) {
+                    message.error(`Ngày của dịch vụ ${item.name} không hợp lệ!`);
                     return true;
                 }
             }
@@ -719,6 +806,24 @@ const CustomerCart = () => {
         });
 
         if (hasInvalidDate) return;
+
+        const foodItems = cart.filter((item) => item.type === "food");
+        for (const item of foodItems) {
+            const foodRef = db.collection("foods").doc(item.id);
+            const foodDoc = await foodRef.get();
+            if (!foodDoc.exists) {
+                message.error(`Món ăn ${item.name} không tồn tại!`);
+                return;
+            }
+            const foodData = foodDoc.data();
+            const currentQuantity = foodData.quantity || 0;
+            const requestedQuantity = item.quantity || 1;
+
+            if (currentQuantity < requestedQuantity) {
+                message.error(`Số lượng ${item.name} không đủ! Còn ${currentQuantity} sản phẩm.`);
+                return;
+            }
+        }
 
         const order = {
             userId: user.uid,
@@ -732,45 +837,123 @@ const CustomerCart = () => {
             })),
             total: cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0).toString(),
             timestamp: new Date().toISOString(),
-            status: "Chờ xử lý",
+            status: paymentMethod === "COD" ? "Chờ xử lý" : "Chờ thanh toán",
+            paymentMethod,
         };
 
         try {
-            await db.collection("orders").add(order);
-
-            const appointmentPromises = cart.map((item) => {
-                if (item.type === "service") {
-                    const appointment = {
-                        fullname: userData.fullname || "",
-                        phone: userData.phone || "",
-                        date: item.date,
-                        service: item.name || "Không có tên",
-                        status: "Chờ xác nhận",
-                        userId: user.uid,
-                    };
-                    console.log(`Saving appointment for service ${item.name} with date: ${item.date}`);
-                    return db.collection("appointments").add(appointment)
-                        .then((docRef) => {
-                            console.log(`Đã đẩy dịch vụ ${item.name} vào bảng appointments với ID: ${docRef.id}`);
-                        })
-                        .catch((error) => {
-                            console.error("Lỗi khi đẩy dịch vụ vào bảng appointments:", error);
-                            throw new Error(`Lỗi khi lưu lịch hẹn cho dịch vụ ${item.name}: ${error.message}`);
-                        });
-                }
-                return Promise.resolve();
+            const orderRef = await db.collection("orders").add(order);
+            setOrderId(orderRef.id);
+            console.log("Đơn hàng đã tạo:", {
+                orderId: orderRef.id,
+                total: order.total,
+                items: order.items,
+                userId: order.userId,
+                userFullname: order.userFullname,
+                userPhone: order.userPhone,
+                timestamp: order.timestamp,
+                paymentMethod: order.paymentMethod,
+                status: order.status
             });
 
-            await Promise.all(appointmentPromises);
+            const updatePromises = foodItems.map(async (item) => {
+                const foodRef = db.collection("foods").doc(item.id);
+                const foodDoc = await foodRef.get();
+                const currentQuantity = foodDoc.data().quantity || 0;
+                const requestedQuantity = item.quantity || 1;
+                await foodRef.update({
+                    quantity: currentQuantity - requestedQuantity,
+                    updatedAt: new Date().toISOString(),
+                });
+                if (currentQuantity - requestedQuantity <= 0) {
+                    await foodRef.update({
+                        status: "Hết hàng",
+                        updatedAt: new Date().toISOString(),
+                    });
+                }
+            });
 
-            localStorage.removeItem("cart");
-            setCart([]);
-            message.success("Đặt hàng thành công! Vui lòng kiểm tra thông tin trong phần lịch sử đơn hàng.");
-            navigate("/customer/home");
+            await Promise.all(updatePromises);
+
+            if (paymentMethod === "VietQR") {
+                NProgress.start();
+                const result = generateVietQR(orderRef.id, order.total);
+                console.log("Tổng tiền yêu cầu:", order.total);
+                if (!result) return;
+                setQrCodeUrl(result.qrUrl);
+                setBankInfo(result.bankInfo);
+                NProgress.done();
+                message.info("Quét mã QR để thanh toán!");
+
+                const checkInterval = setInterval(async () => {
+                    const isPaid = await checkPaymentStatus(orderRef.id, order.total);
+                    if (isPaid) {
+                        clearInterval(checkInterval);
+                        await handleSuccessfulPayment(orderRef);
+                    }
+                }, 3000);
+
+                const timeout = setTimeout(() => {
+                    clearInterval(checkInterval);
+                    if (qrCodeUrl) {
+                        message.warning("Hết thời gian chờ thanh toán!");
+                        setQrCodeUrl(null);
+                        setBankInfo(null);
+                        setOrderId(null);
+                    }
+                }, 30 * 60 * 1000);
+
+                return () => {
+                    clearInterval(checkInterval);
+                    clearTimeout(timeout);
+                };
+            } else {
+                const appointmentPromises = cart.map((item) => {
+                    if (item.type === "service") {
+                        const appointment = {
+                            fullname: userData.fullname || "",
+                            phone: userData.phone || "",
+                            date: item.date,
+                            service: item.name || "Không có tên",
+                            status: "Chờ xác nhận",
+                            userId: user.uid,
+                        };
+                        return db.collection("appointments").add(appointment);
+                    }
+                    return Promise.resolve();
+                });
+                await Promise.all(appointmentPromises);
+                localStorage.removeItem("cart");
+                setCart([]);
+                message.success("Đặt hàng thành công!");
+                navigate("/customer/home");
+            }
         } catch (error) {
-            console.error("Lỗi khi đặt hàng:", error);
-            message.error(`Có lỗi xảy ra khi đặt hàng: ${error.message}`);
+            console.error("Lỗi đặt hàng:", error);
+            message.error("Lỗi khi đặt hàng!");
         }
+    };
+
+    const updateQuantity = (index, quantity) => {
+        let updatedCart = [...cart];
+        quantity = Math.max(1, parseInt(quantity));
+        updatedCart[index].quantity = quantity;
+        localStorage.setItem("cart", JSON.stringify(updatedCart));
+        setCart(updatedCart);
+    };
+
+    const updateDate = (index, date) => {
+        let updatedCart = [...cart];
+        updatedCart[index].date = date || null;
+        localStorage.setItem("cart", JSON.stringify(updatedCart));
+        setCart(updatedCart);
+    };
+
+    const removeItem = (index) => {
+        let updatedCart = [...cart];
+        updatedCart.splice(index, 1);
+        localStorage.setItem("cart", JSON.stringify(updatedCart));
+        setCart(updatedCart);
     };
 
     const total = cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
@@ -789,6 +972,12 @@ const CustomerCart = () => {
                 </Paragraph>
             ) : (
                 <>
+                    <Form.Item label="Phương thức thanh toán">
+                        <Select value={paymentMethod} onChange={setPaymentMethod}>
+                            <Select.Option value="COD">Thanh toán khi nhận hàng</Select.Option>
+                            <Select.Option value="VietQR">Thanh toán qua VietQR</Select.Option>
+                        </Select>
+                    </Form.Item>
                     {cart.map((item, index) => (
                         <Card key={index} style={{ marginBottom: 16, background: "var(--table-bg)" }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -820,6 +1009,28 @@ const CustomerCart = () => {
                             </div>
                         </Card>
                     ))}
+                    {paymentMethod === "VietQR" && qrCodeUrl && (
+                        <Card style={{ marginBottom: 16, background: "var(--table-bg)", textAlign: "center" }}>
+                            <Title level={4} style={{ color: "var(--text-color)" }}>
+                                Quét mã QR để thanh toán
+                            </Title>
+                            <img src={qrCodeUrl} alt="VietQR Code" style={{ width: 400, height: 400 }} />
+                            <Paragraph style={{ color: "var(--text-color)" }}>
+                                Sử dụng ứng dụng ngân hàng để quét mã QR.
+                            </Paragraph>
+                            {bankInfo && (
+                                <Paragraph style={{ color: "var(--text-color)" }}>
+                                    Hoặc chuyển khoản: <br />
+                                    Ngân hàng: VietinBank <br />
+                                    Số tài khoản: {bankInfo.accountNo} <br />
+                                    Tên tài khoản: {bankInfo.accountName}
+                                </Paragraph>
+                            )}
+                            <Paragraph style={{ color: "var(--text-color)" }}>
+                                Đang chờ xác nhận thanh toán...
+                            </Paragraph>
+                        </Card>
+                    )}
                     <Card
                         style={{
                             position: "fixed",
@@ -854,7 +1065,8 @@ const CustomerCart = () => {
         </div>
     );
 };
-// Login Page
+
+// CustomerLogin component (unchanged)
 const CustomerLogin = () => {
     const { theme } = useContext(ThemeContext);
     const navigate = useNavigate();
@@ -872,7 +1084,6 @@ const CustomerLogin = () => {
                 const userData = userDoc.data();
                 const storedHashedPassword = userData.password;
 
-                // Thay window.sha256 bằng sha256
                 const hashedPassword = sha256(values.password);
                 if (hashedPassword !== storedHashedPassword) {
                     throw new Error("Mật khẩu không khớp với dữ liệu mã hóa!");
@@ -938,7 +1149,8 @@ const CustomerLogin = () => {
         </div>
     );
 };
-// Trong CustomerApp.js
+
+// CustomerRegister component (unchanged)
 const CustomerRegister = () => {
     const { theme } = useContext(ThemeContext);
     const navigate = useNavigate();
@@ -1075,7 +1287,6 @@ const CustomerRegister = () => {
         }
 
         try {
-            // Store user data in Firestore (excluding password)
             await db.collection("users").add({
                 fullname,
                 email,
@@ -1083,13 +1294,25 @@ const CustomerRegister = () => {
                 dob,
                 gender,
                 role: "user",
+                uid: tempUser.uid,
             });
+
+            const userData = {
+                fullname,
+                email,
+                phone,
+                dob,
+                gender,
+                role: "user",
+                uid: tempUser.uid,
+            };
+            localStorage.setItem("user", JSON.stringify(userData));
 
             message.success("Đăng ký thành công!");
             form.resetFields();
             setIsEmailVerificationSent(false);
             setTempUser(null);
-            navigate("/customer/login");
+            navigate("/customer/home");
         } catch (error) {
             console.error("Lỗi khi đăng ký:", error);
             message.error("Không thể đăng ký tài khoản. Vui lòng thử lại sau!");
@@ -1250,11 +1473,14 @@ const CustomerRegister = () => {
         </div>
     );
 };
+
+// CustomerProfile component (unchanged)
 const CustomerProfile = () => {
     const { theme } = useContext(ThemeContext);
     const [form] = Form.useForm();
     const navigate = useNavigate();
     const [isRedirecting, setIsRedirecting] = useState(false);
+    const [userDocId, setUserDocId] = useState(null);
 
     useEffect(() => {
         const user = auth.currentUser;
@@ -1266,45 +1492,57 @@ const CustomerProfile = () => {
             return;
         }
 
-        const userData = JSON.parse(localStorage.getItem("user"));
-        if (!userData && !isRedirecting) {
-            message.destroy();
-            message.info("Vui lòng cập nhật thông tin cá nhân!");
-        } else if (userData) {
-            form.setFieldsValue({
-                fullname: userData.fullname || "",
-                email: userData.email || "",
-                phone: userData.phone || "",
-                dob: userData.dob || "",
-                gender: userData.gender || "",
-            });
-
-            if (userData.email) {
-                db.collection("users")
-                    .where("email", "==", userData.email)
-                    .get()
-                    .then((querySnapshot) => {
-                        if (!querySnapshot.empty) {
-                            const doc = querySnapshot.docs[0];
-                            localStorage.setItem("userId", doc.id);
-                        } else {
-                            console.error(
-                                "Không tìm thấy tài khoản trong Firestore!"
-                            );
-                        }
+        const fetchUserData = async () => {
+            try {
+                const userQuery = await db.collection("users").where("email", "==", user.email).get();
+                if (!userQuery.empty) {
+                    const userDoc = userQuery.docs[0];
+                    const userData = userDoc.data();
+                    setUserDocId(userDoc.id);
+                    localStorage.setItem("user", JSON.stringify({ ...userData, uid: user.uid }));
+                    form.setFieldsValue({
+                        fullname: userData.fullname || "",
+                        email: userData.email || user.email,
+                        phone: userData.phone || "",
+                        dob: userData.dob || "",
+                        gender: userData.gender || "",
                     });
+                } else {
+                    const newUserData = {
+                        uid: user.uid,
+                        email: user.email,
+                        fullname: "",
+                        phone: "",
+                        dob: "",
+                        gender: "",
+                        role: "user",
+                    };
+                    const docRef = await db.collection("users").add(newUserData);
+                    setUserDocId(docRef.id);
+                    localStorage.setItem("user", JSON.stringify(newUserData));
+                    form.setFieldsValue(newUserData);
+                }
+            } catch (error) {
+                console.error("Lỗi khi lấy dữ liệu người dùng:", error);
+                message.error("Không thể tải thông tin người dùng: " + error.message);
             }
-        }
+        };
+
+        fetchUserData();
     }, [form, navigate, isRedirecting]);
 
     const handleSubmit = async (values) => {
+        const user = auth.currentUser;
+        if (!user) {
+            message.error("Vui lòng đăng nhập để cập nhật hồ sơ!");
+            return;
+        }
+
         const { phone, dob } = values;
 
         const phoneRegex = /^\+?[1-9]\d{8,14}$/;
         if (!phoneRegex.test(phone)) {
-            message.error(
-                "Số điện thoại không hợp lệ! Vui lòng nhập số hợp lệ (ví dụ: +84912345678)"
-            );
+            message.error("Số điện thoại không hợp lệ! Vui lòng nhập số hợp lệ (ví dụ: +84912345678)");
             return;
         }
 
@@ -1330,37 +1568,32 @@ const CustomerProfile = () => {
 
         const updatedUser = {
             fullname: values.fullname,
-            email: values.email,
+            email: user.email,
             phone,
             dob,
             gender: values.gender,
+            uid: user.uid,
         };
 
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-
-        const userId = localStorage.getItem("userId");
-        if (userId) {
-            try {
-                await db.collection("users").doc(userId).update(updatedUser);
+        try {
+            if (userDocId) {
+                await db.collection("users").doc(userDocId).set(updatedUser, { merge: true });
+                const userDoc = await db.collection("users").doc(userDocId).get();
+                const userData = { ...userDoc.data(), uid: user.uid };
+                localStorage.setItem("user", JSON.stringify(userData));
                 message.success("Thông tin đã được cập nhật!");
                 form.setFieldsValue(updatedUser);
-            } catch (error) {
-                console.error(
-                    "Lỗi khi cập nhật thông tin lên Firestore:",
-                    error
-                );
-                message.error("Lỗi khi cập nhật thông tin: " + error.message);
-            }
-        } else {
-            try {
-                const docRef = await db.collection("users").add(updatedUser);
-                localStorage.setItem("userId", docRef.id);
+            } else {
+                const newUserData = { ...updatedUser, role: "user" };
+                const docRef = await db.collection("users").add(newUserData);
+                setUserDocId(docRef.id);
+                localStorage.setItem("user", JSON.stringify(newUserData));
                 message.success("Thông tin đã được lưu!");
                 form.setFieldsValue(updatedUser);
-            } catch (error) {
-                console.error("Lỗi khi lưu thông tin vào Firestore:", error);
-                message.error("Lỗi khi lưu thông tin: " + error.message);
             }
+        } catch (error) {
+            console.error("Lỗi khi cập nhật thông tin:", error);
+            message.error("Lỗi khi cập nhật thông tin: " + error.message);
         }
     };
 
@@ -1439,7 +1672,6 @@ const CustomerProfile = () => {
                                         },
                                     ]}
                                 >
-                                    Habana
                                     <Input placeholder="Nhập họ và tên" />
                                 </Form.Item>
                                 <Form.Item
@@ -1538,7 +1770,7 @@ const CustomerProfile = () => {
     );
 };
 
-// Contact Page
+// CustomerContact component (unchanged)
 const CustomerContact = () => {
     const { theme } = useContext(ThemeContext);
 
@@ -1581,6 +1813,7 @@ const CustomerContact = () => {
     );
 };
 
+// CustomerApp component (unchanged)
 const CustomerApp = () => {
     const [isLoading, setIsLoading] = useState(true);
 
@@ -1605,14 +1838,14 @@ const CustomerApp = () => {
                 <Route path="/register" element={<CustomerRegister />} />
                 <Route path="/profile" element={<CustomerProfile />} />
                 <Route path="/contact" element={<CustomerContact />} />
-                <Route path="/history" element={<CustomerHistory />} /> {/* Thêm tuyến đường mới */}
+                <Route path="/history" element={<CustomerHistory />} />
                 <Route path="*" element={<CustomerHome />} />
             </Routes>
         </div>
     );
 };
 
-// History Page
+// CustomerHistory component (unchanged)
 const CustomerHistory = () => {
     const { theme } = useContext(ThemeContext);
     const [orders, setOrders] = useState([]);
@@ -1633,7 +1866,13 @@ const CustomerHistory = () => {
             .onSnapshot(
                 (snapshot) => {
                     const orderData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-                    setOrders(orderData);
+                    // Sắp xếp theo timestamp giảm dần (gần nhất lên trước)
+                    const sortedOrders = orderData.sort((a, b) => {
+                        const dateA = new Date(a.timestamp);
+                        const dateB = new Date(b.timestamp);
+                        return dateB - dateA; // Giảm dần
+                    });
+                    setOrders(sortedOrders);
                     NProgress.done();
                 },
                 (error) => {

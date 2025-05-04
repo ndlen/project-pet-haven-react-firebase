@@ -33,17 +33,27 @@ const Appointments = () => {
                 (snapshot) => {
                     const appointments = snapshot.docs.map((doc) => {
                         const docData = doc.data();
-                        console.log("Document ID:", doc.id, "Data:", docData);
+                        // console.log("Document ID:", doc.id, "Data:", docData);
                         return {
                             id: doc.id,
                             ...docData,
                         };
                     });
+
+                    // Sort appointments by date in ascending order
+                    appointments.sort((a, b) => {
+                        const dateA = a.date || "";
+                        const dateB = b.date || "";
+                        return dateA.localeCompare(dateB); // String comparison for YYYY-MM-DD
+                        // Alternatively, use Date objects:
+                        // return new Date(dateA) - new Date(dateB);
+                    });
+
                     setData(appointments);
                     NProgress.done();
                 },
                 (error) => {
-                    console.error("Lỗi tải dữ liệu lịch hẹn:", error);
+                    // console.error("Lỗi tải dữ liệu lịch hẹn:", error);
                     message.error("Không thể tải dữ liệu lịch hẹn. Vui lòng thử lại sau!");
                     NProgress.done();
                 }
@@ -64,7 +74,7 @@ const Appointments = () => {
             title: "Thời gian",
             dataIndex: "date",
             key: "date",
-            render: (text) => text || "Chưa thiết lập"
+            render: (text) => text || "Chưa thiết lập",
         },
         { title: "Dịch vụ", dataIndex: "service", key: "service" },
         { title: "Trạng thái", dataIndex: "status", key: "status" },
@@ -124,7 +134,7 @@ const Appointments = () => {
             const formattedValues = {
                 ...values,
             };
-            console.log("Formatted values to save:", formattedValues);
+            // console.log("Formatted values to save:", formattedValues);
 
             if (editingRecord) {
                 await db.collection("appointments").doc(editingRecord.id).update(formattedValues);
@@ -136,7 +146,7 @@ const Appointments = () => {
             setModalOpen(false);
             setEditingRecord(null);
         } catch (error) {
-            console.error("Lỗi khi lưu lịch hẹn:", error);
+            // console.error("Lỗi khi lưu lịch hẹn:", error);
             message.error("Không thể lưu lịch hẹn. Vui lòng thử lại sau!");
         }
     };
@@ -152,7 +162,7 @@ const Appointments = () => {
             await db.collection("appointments").doc(id).delete();
             message.success("Xóa lịch hẹn thành công!");
         } catch (error) {
-            console.error("Lỗi khi xóa lịch hẹn:", error);
+            // console.error("Lỗi khi xóa lịch hẹn:", error);
             message.error("Không thể xóa lịch hẹn. Vui lòng thử lại sau!");
         }
     };

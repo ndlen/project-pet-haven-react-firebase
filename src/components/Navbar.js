@@ -11,10 +11,13 @@ const Navbar = () => {
     const { theme, toggleTheme } = useContext(ThemeContext);
 
     const menuItems = [
-        { key: "/appointments", icon: <ScheduleOutlined />, label: "Lịch Hẹn" },
-        { key: "/foods", icon: <ShoppingCartOutlined />, label: "Thức Ăn" },
-        { key: "/services", icon: <HomeOutlined />, label: "Dịch Vụ" },
-        { key: "/users", icon: <UserOutlined />, label: "Người Dùng" },
+        { key: "/admin/appointments", icon: <ScheduleOutlined />, label: "Lịch Hẹn" },
+        { key: "/admin/foods", icon: <ShoppingCartOutlined />, label: "Thức Ăn" },
+        { key: "/admin/services", icon: <HomeOutlined />, label: "Dịch Vụ" },
+        { key: "/admin/users", icon: <UserOutlined />, label: "Người Dùng" },
+        { key: "/admin/employees", icon: <UserOutlined />, label: "Nhân Viên" },
+        { key: "/admin/schedule", icon: <UserOutlined />, label: "Phân Công Và Thông Báo" },
+
     ];
 
     return (
