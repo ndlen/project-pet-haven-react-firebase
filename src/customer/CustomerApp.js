@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { Menu, Switch, Button, Card, Typography, message, InputNumber, Image, Spin, Form, Input, Select, Table, DatePicker } from "antd";
+import { Menu, Switch, Button, Card, Typography, message, InputNumber, Image, Spin, Form, Input, Select, Table, DatePicker, Pagination } from "antd";
 import { ShoppingCartOutlined, DeleteOutlined, HomeOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
 import { ThemeContext } from "../context/ThemeContext";
 import moment from "moment";
@@ -22,7 +22,9 @@ const CustomerNavbar = () => {
     const { theme, toggleTheme } = useContext(ThemeContext);
     const [user, setUser] = useState(null);
     const [isRedirecting, setIsRedirecting] = useState(false);
+    const [cartCount, setCartCount] = useState(0); // State for cart item count
 
+    // Load user data
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged((currentUser) => {
             if (currentUser) {
@@ -65,9 +67,33 @@ const CustomerNavbar = () => {
         return () => unsubscribe();
     }, [navigate, location.pathname, isRedirecting]);
 
+    // Load and update cart count
+    useEffect(() => {
+        const updateCartCount = () => {
+            const cart = JSON.parse(localStorage.getItem("cart")) || [];
+            const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+            setCartCount(totalItems);
+        };
+
+        // Initial load
+        updateCartCount();
+
+        // Listen for storage changes (e.g., when cart is updated in another component)
+        window.addEventListener("storage", updateCartCount);
+
+        // Optional: Polling for cart changes if storage event isn't reliable
+        const interval = setInterval(updateCartCount, 1000);
+
+        return () => {
+            window.removeEventListener("storage", updateCartCount);
+            clearInterval(interval);
+        };
+    }, []);
+
     const handleLogout = () => {
         firebaseLogout();
         localStorage.removeItem("cart");
+        setCartCount(0); // Reset cart count on logout
         navigate("/customer/login");
     };
 
@@ -75,7 +101,15 @@ const CustomerNavbar = () => {
         { key: "/customer/home", icon: <HomeOutlined />, label: "Trang chủ" },
         { key: "/customer/services", icon: <ShoppingCartOutlined />, label: "Dịch vụ" },
         { key: "/customer/foods", icon: <ShoppingCartOutlined />, label: "Thức ăn" },
-        { key: "/customer/cart", icon: <ShoppingCartOutlined />, label: "Giỏ hàng" },
+        {
+            key: "/customer/cart",
+            icon: <ShoppingCartOutlined />,
+            label: (
+                <span>
+                    Giỏ hàng {cartCount > 0 && <span style={{ color: "#FF4D4F" }}>({cartCount})</span>}
+                </span>
+            ),
+        },
         { key: "/customer/contact", icon: <MailOutlined />, label: "Liên hệ" },
     ];
 
@@ -335,6 +369,8 @@ const CustomerHome = () => {
 const CustomerServices = () => {
     const { theme } = useContext(ThemeContext);
     const [services, setServices] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize] = useState(12);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -400,6 +436,14 @@ const CustomerServices = () => {
         message.success(`${service.nameService} đã được thêm vào giỏ hàng!`);
     };
 
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedServices = services.slice(startIndex, endIndex);
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+    };
+
     return (
         <div style={{ padding: "80px 50px", background: "var(--background-color)", minHeight: "100vh" }}>
             <Title level={2} style={{ color: "var(--text-color)" }}>
@@ -413,29 +457,82 @@ const CustomerServices = () => {
                     Hiện không có dịch vụ nào để hiển thị.
                 </Paragraph>
             ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px", padding: "20px" }}>
-                    {services.map((service) => (
-                        <Card
-                            key={service.id}
-                            hoverable
-                            cover={<img alt={service.nameService} src={service.picture || "https://via.placeholder.com/200"} style={{ height: 200, objectFit: "cover" }} />}
-                            style={{ background: "var(--table-bg)" }}
-                        >
-                            <Card.Meta
-                                title={<span style={{ color: "var(--text-color)" }}>{service.nameService}</span>}
-                                description={
-                                    <div>
-                                        <Paragraph style={{ color: "var(--text-color)" }}>{service.describe || "Mô tả chưa có"}</Paragraph>
-                                        <Paragraph style={{ color: "#FFD700" }}>{service.price ? service.price.toLocaleString() : "0"} VND</Paragraph>
-                                        <Button type="primary" onClick={() => addToCart(service)}>
-                                            Thêm vào giỏ hàng
-                                        </Button>
-                                    </div>
+                <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px", padding: "20px" }}>
+                        {paginatedServices.map((service) => (
+                            <Card
+                                key={service.id}
+                                hoverable
+                                cover={
+                                    <img
+                                        alt={service.nameService}
+                                        src={service.picture || "https://via.placeholder.com/200"}
+                                        style={{ height: 200, objectFit: "cover" }}
+                                    />
                                 }
-                            />
-                        </Card>
-                    ))}
-                </div>
+                                style={{
+                                    background: "var(--table-bg)",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    minHeight: "400px", // Set a consistent minimum height for cards
+                                }}
+                            >
+                                <Card.Meta
+                                    title={<span style={{ color: "var(--text-color)" }}>{service.nameService}</span>}
+                                    description={
+                                        <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                                            <Paragraph
+                                                style={{
+                                                    color: "var(--text-color)",
+                                                    marginBottom: "8px",
+                                                    display: "-webkit-box",
+                                                    WebkitLineClamp: 3, // Limit description to 3 lines
+                                                    WebkitBoxOrient: "vertical",
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                    minHeight: "60px", // Ensure consistent height for description
+                                                }}
+                                            >
+                                                {service.describe || "Mô tả chưa có"}
+                                            </Paragraph>
+                                            <div>
+                                                <Paragraph style={{ color: "#FFD700", marginBottom: "8px" }}>
+                                                    {service.price ? service.price.toLocaleString() : "0"} VND
+                                                </Paragraph>
+                                                <Button
+                                                    type="primary"
+                                                    onClick={() => addToCart(service)}
+                                                    style={{
+                                                        width: "100%",
+                                                        height: "40px",
+                                                        fontSize: "16px",
+                                                        padding: "0 16px",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                        backgroundColor: "#fa8c16", // Match the orange color in the image
+                                                        borderColor: "#fa8c16",
+                                                    }}
+                                                >
+                                                    Thêm vào giỏ hàng
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    }
+                                />
+                            </Card>
+                        ))}
+                    </div>
+                    <div style={{ textAlign: "center", marginTop: "20px" }}>
+                        <Pagination
+                            current={currentPage}
+                            pageSize={pageSize}
+                            total={services.length}
+                            onChange={handlePageChange}
+                            showSizeChanger={false}
+                        />
+                    </div>
+                </>
             )}
         </div>
     );
@@ -445,6 +542,10 @@ const CustomerServices = () => {
 const CustomerFoods = () => {
     const { theme } = useContext(ThemeContext);
     const [foods, setFoods] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState("all");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(12); // Default items per page
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -475,6 +576,11 @@ const CustomerFoods = () => {
                             ...doc.data(),
                         }));
                         setFoods(foodData);
+                        // Extract unique categories
+                        const uniqueCategories = [
+                            ...new Set(foodData.map((food) => food.category || "Không xác định")),
+                        ];
+                        setCategories(uniqueCategories);
                         console.log("Danh sách thức ăn:", foodData);
                     }
                     NProgress.done();
@@ -537,6 +643,28 @@ const CustomerFoods = () => {
         message.success(`${food.name} đã được thêm vào giỏ hàng!`);
     };
 
+    // Filter foods based on selected category
+    const filteredFoods =
+        selectedCategory === "all"
+            ? foods
+            : foods.filter(
+                (food) =>
+                    (food.category || "Không xác định") === selectedCategory
+            );
+
+    // Calculate paginated foods
+    const startIndex = (currentPage - 1) * pageSize;
+    const paginatedFoods = filteredFoods.slice(startIndex, startIndex + pageSize);
+
+    // Handle page change
+    const handlePageChange = (page, newPageSize) => {
+        setCurrentPage(page);
+        if (newPageSize !== pageSize) {
+            setPageSize(newPageSize);
+            setCurrentPage(1); // Reset to first page when page size changes
+        }
+    };
+
     return (
         <div
             style={{
@@ -551,70 +679,101 @@ const CustomerFoods = () => {
             <Paragraph style={{ color: "var(--text-color)" }}>
                 Dinh dưỡng tốt nhất cho người bạn nhỏ của bạn!
             </Paragraph>
-            {foods.length === 0 ? (
-                <Paragraph style={{ color: "var(--text-color)" }}>
-                    Hiện không có sản phẩm nào còn hàng! Vui lòng quay lại sau hoặc
-                    liên hệ hỗ trợ.
-                </Paragraph>
-            ) : (
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                        gap: "20px",
-                        padding: "20px",
+            <div style={{ marginBottom: "20px" }}>
+                <Select
+                    style={{ width: 200 }}
+                    value={selectedCategory}
+                    onChange={(value) => {
+                        setSelectedCategory(value);
+                        setCurrentPage(1); // Reset to first page when category changes
                     }}
                 >
-                    {foods.map((food) => (
-                        <Card
-                            key={food.id}
-                            hoverable
-                            cover={
-                                <img
-                                    alt={food.name}
-                                    src={
-                                        food.picture ||
-                                        "https://via.placeholder.com/200"
-                                    }
-                                    style={{ height: 200, objectFit: "cover" }}
-                                />
-                            }
-                            style={{ background: "var(--table-bg)" }}
-                        >
-                            <Card.Meta
-                                title={
-                                    <span style={{ color: "var(--text-color)" }}>
-                                        {food.name}
-                                    </span>
-                                }
-                                description={
-                                    <div>
-                                        <Paragraph
-                                            style={{ color: "var(--text-color)" }}
-                                        >
-                                            Danh mục:{" "}
-                                            {food.category || "Không xác định"}
-                                        </Paragraph>
-                                        <Paragraph
-                                            style={{ color: "#FFD700" }}
-                                        >
-                                            {food.price
-                                                ? food.price.toLocaleString()
-                                                : "0"}{" "}
-                                            VND
-                                        </Paragraph>
-                                        <Button
-                                            type="primary"
-                                            onClick={() => addToCart(food)}
-                                        >
-                                            Thêm vào giỏ hàng
-                                        </Button>
-                                    </div>
-                                }
-                            />
-                        </Card>
+                    <Select.Option value="all">Tất cả danh mục</Select.Option>
+                    {categories.map((category) => (
+                        <Select.Option key={category} value={category}>
+                            {category}
+                        </Select.Option>
                     ))}
-                </div>
+                </Select>
+            </div>
+            {filteredFoods.length === 0 ? (
+                <Paragraph style={{ color: "var(--text-color)" }}>
+                    Hiện không có sản phẩm nào trong danh mục này!
+                </Paragraph>
+            ) : (
+                <>
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                            gap: "20px",
+                            padding: "20px",
+                        }}
+                    >
+                        {paginatedFoods.map((food) => (
+                            <Card
+                                key={food.id}
+                                hoverable
+                                cover={
+                                    <img
+                                        alt={food.name}
+                                        src={
+                                            food.picture ||
+                                            "https://via.placeholder.com/200"
+                                        }
+                                        style={{ height: 200, objectFit: "cover" }}
+                                    />
+                                }
+                                style={{ background: "var(--table-bg)" }}
+                            >
+                                <Card.Meta
+                                    title={
+                                        <span style={{ color: "var(--text-color)" }}>
+                                            {food.name}
+                                        </span>
+                                    }
+                                    description={
+                                        <div>
+                                            <Paragraph
+                                                style={{ color: "var(--text-color)" }}
+                                            >
+                                                Danh mục:{" "}
+                                                {food.category || "Không xác định"}
+                                            </Paragraph>
+                                            <Paragraph
+                                                style={{ color: "#FFD700" }}
+                                            >
+                                                {food.price
+                                                    ? food.price.toLocaleString()
+                                                    : "0"}{" "}
+                                                VND
+                                            </Paragraph>
+                                            <Button
+                                                type="primary"
+                                                onClick={() => addToCart(food)}
+                                            >
+                                                Thêm vào giỏ hàng
+                                            </Button>
+                                        </div>
+                                    }
+                                />
+                            </Card>
+                        ))}
+                    </div>
+                    <div style={{ textAlign: "center", marginTop: "20px" }}>
+                        <Pagination
+                            current={currentPage}
+                            pageSize={pageSize}
+                            total={filteredFoods.length}
+                            onChange={handlePageChange}
+                            showSizeChanger
+                            pageSizeOptions={["12", "24", "36"]}
+                            showTotal={(total, range) =>
+                                `${range[0]}-${range[1]} của ${total} sản phẩm`
+                            }
+                        />
+                    </div>
+                </>
             )}
         </div>
     );
@@ -891,7 +1050,7 @@ const CustomerCart = () => {
                         clearInterval(checkInterval);
                         await handleSuccessfulPayment(orderRef);
                     }
-                }, 3000);
+                }, 2000);
 
                 const timeout = setTimeout(() => {
                     clearInterval(checkInterval);
@@ -901,7 +1060,7 @@ const CustomerCart = () => {
                         setBankInfo(null);
                         setOrderId(null);
                     }
-                }, 30 * 60 * 1000);
+                }, 10 * 60 * 1000);
 
                 return () => {
                     clearInterval(checkInterval);
@@ -1018,16 +1177,69 @@ const CustomerCart = () => {
                             <Paragraph style={{ color: "var(--text-color)" }}>
                                 Sử dụng ứng dụng ngân hàng để quét mã QR.
                             </Paragraph>
+
                             {bankInfo && (
-                                <Paragraph style={{ color: "var(--text-color)" }}>
-                                    Hoặc chuyển khoản: <br />
-                                    Ngân hàng: VietinBank <br />
-                                    Số tài khoản: {bankInfo.accountNo} <br />
-                                    Tên tài khoản: {bankInfo.accountName}
-                                </Paragraph>
+                                <div style={{ margin: "0 auto", width: "100%", maxWidth: "500px", textAlign: "left" }}>
+                                    <Paragraph style={{ color: "var(--text-color)", textAlign: "left" }}>
+                                        Hoặc chuyển khoản đến<br />
+                                        SỐ TÀI KHOẢN: <span
+                                            style={{
+                                                fontWeight: "bold",
+                                                backgroundColor: "#f0f0f0",
+                                                padding: "2px 6px",
+                                                marginLeft: 4,
+                                                marginRight: 8,
+                                                borderRadius: 4,
+                                                cursor: "pointer"
+                                            }}
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(orderId.toUpperCase())
+                                                message.success("Đã copy Số tài khoản");
+
+                                            }}
+                                            title="Nhấn để sao chép"
+                                        >
+                                            {bankInfo.accountNo}
+                                        </span><br />
+                                        <div style={{ marginTop: "3px" }}></div>
+                                        MÃ GIAO DỊCH:
+                                        <span
+                                            style={{
+                                                fontWeight: "bold",
+                                                backgroundColor: "#f0f0f0",
+                                                padding: "0px 6px",
+                                                marginLeft: 4,
+                                                marginRight: 8,
+                                                borderRadius: 4,
+                                                cursor: "pointer"
+                                            }}
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(orderId.toUpperCase())
+                                                message.success("Đã copy mã đơn hàng");
+
+                                            }}
+                                            title="Nhấn để sao chép"
+                                        >
+                                            {orderId.toUpperCase()}
+                                        </span>
+                                        <br />
+                                        SỐ TIỀN:{" "}
+                                        <strong style={{ color: "green", fontWeight: "bold", fontSize: "16px" }}>
+                                            {new Intl.NumberFormat("vi-VN", {
+                                                style: "currency",
+                                                currency: "VND"
+                                            }).format(total)}
+                                        </strong>
+                                        <br />
+                                        NGÂN HÀNG: <strong>MB BANK </strong><br />
+                                        CHỦ TÀI KHOẢN:{` `}
+                                        <strong>{bankInfo.accountName}</strong>
+                                    </Paragraph>
+                                </div>
+
                             )}
                             <Paragraph style={{ color: "var(--text-color)" }}>
-                                Đang chờ xác nhận thanh toán...
+                                Đơn hàng sẽ hoàn tất sau khi thanh toán. Đang chờ xác nhận thanh toán...
                             </Paragraph>
                         </Card>
                     )}

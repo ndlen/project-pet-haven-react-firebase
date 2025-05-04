@@ -15,6 +15,7 @@ import "./styles.css";
 import Schedule from "./pages/Schedule";
 import Employees from "./pages/Employees";
 import ErrorPage from "./Error";
+import Statistics from "./pages/Statistics";
 
 const { Content } = Layout;
 
@@ -79,7 +80,10 @@ const App = () => {
         { path: "users", element: <Users /> },
         { path: "schedule", element: <Schedule /> },
         { path: "employees", element: <Employees /> },
-        { path: "*", element: <ErrorPage /> }, // Catch unmatched admin routes
+        { path: "statistics", element: <Statistics /> },
+
+        { path: "*", element: <ErrorPage /> },
+        // Catch unmatched admin routes
       ],
     },
     {
