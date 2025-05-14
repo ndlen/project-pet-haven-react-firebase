@@ -16,6 +16,7 @@ import Schedule from "./pages/Schedule";
 import Employees from "./pages/Employees";
 import ErrorPage from "./Error";
 import Statistics from "./pages/Statistics";
+import Orders from "./pages/Order";
 
 const { Content } = Layout;
 
@@ -78,6 +79,7 @@ const App = () => {
         { path: "foods", element: <Foods /> },
         { path: "services", element: <Services /> },
         { path: "users", element: <Users /> },
+        { path: "orders", element: <Orders /> },
         { path: "schedule", element: <Schedule /> },
         { path: "employees", element: <Employees /> },
         { path: "statistics", element: <Statistics /> },
